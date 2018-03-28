@@ -17,12 +17,17 @@ public abstract class SubPainter {
         mPaint.setColor(Color.RED);
     }
 
-    private void setColor(int color){
+    public void setColor(int color){
         mPaint.setColor(color);
     }
 
 
     public abstract void draw(Canvas canvas);
 
+    /**
+     * 主要用于保存图片文件时使用
+     * @param canvas
+     * @param ratio
+     */
     public abstract void draw(Canvas canvas, float ratio);
 }
