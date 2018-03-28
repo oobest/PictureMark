@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
@@ -18,8 +19,17 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.target.SimpleTarget;
 import com.bumptech.glide.request.transition.Transition;
 
+import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
 
+import io.reactivex.Observer;
+import io.reactivex.SingleObserver;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Consumer;
 import me.iwf.photopicker.PhotoPicker;
 
 public class MainActivity extends AppCompatActivity implements SeekBarDialogFragment.Callback{
@@ -152,10 +162,53 @@ public class MainActivity extends AppCompatActivity implements SeekBarDialogFrag
             @Override
             public void onClick(View v) {
                //mDrawingBoardView.setImageBitmap();
-                imageView.setImageBitmap(mDrawingBoardView.getBitmap());
+                //imageView.setImageBitmap(mDrawingBoardView.getBitmap());
+
+                try {
+                    final File file  = createImageFile();
+                    mDrawingBoardView.save(file, new SingleObserver<File>() {
+                        @Override
+                        public void onSubscribe(Disposable d) {
+
+                        }
+
+                        @Override
+                        public void onSuccess(File file) {
+                            Glide.with(MainActivity.this).load(file).into(imageView);
+                        }
+
+                        @Override
+                        public void onError(Throwable e) {
+
+                        }
+                    });
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
             }
         });
     }
+
+    private File createImageFile() throws IOException {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ENGLISH).format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + ".jpg";
+        File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+
+        if (!storageDir.exists()) {
+            if (!storageDir.mkdir()) {
+                Log.e("TAG", "Throwing Errors....");
+                throw new IOException();
+            }
+        }
+
+        File image = new File(storageDir, imageFileName);
+
+        // Save a file: path for use with ACTION_VIEW intents
+        return image;
+    }
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {

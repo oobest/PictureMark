@@ -1,18 +1,37 @@
 package com.albertou.study.picturemark.view;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.PointF;
+import android.net.Uri;
 import android.support.annotation.Nullable;
+import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import io.reactivex.Flowable;
+import io.reactivex.Observable;
+import io.reactivex.ObservableEmitter;
+import io.reactivex.ObservableOnSubscribe;
+import io.reactivex.Observer;
+import io.reactivex.Scheduler;
+import io.reactivex.Single;
+import io.reactivex.SingleEmitter;
+import io.reactivex.SingleObserver;
+import io.reactivex.SingleOnSubscribe;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Consumer;
+import io.reactivex.schedulers.Schedulers;
 
 /**
  * 绘画板
@@ -79,15 +98,15 @@ public class DrawingBoardView extends android.support.v7.widget.AppCompatImageVi
                 } else if (mDrawingType == DrawingType.TEXT) {
                     pX = event.getX();
                     pY = event.getY();
-                } else if(mDrawingType == DrawingType.RECT) {
+                } else if (mDrawingType == DrawingType.RECT) {
                     PointF current = new PointF(event.getX(), event.getY());
-                    RectPainter painter = new RectPainter(current,false);
+                    RectPainter painter = new RectPainter(current, false);
                     painter.setStrokeWidth(mStrokeWidth);
                     mCurrentPainter = painter;
                     mPainters.add(painter);
-                }else if(mDrawingType == DrawingType.OVAL){
+                } else if (mDrawingType == DrawingType.OVAL) {
                     PointF current = new PointF(event.getX(), event.getY());
-                    RectPainter painter = new RectPainter(current,true);
+                    RectPainter painter = new RectPainter(current, true);
                     painter.setStrokeWidth(mStrokeWidth);
                     mCurrentPainter = painter;
                     mPainters.add(painter);
@@ -101,7 +120,7 @@ public class DrawingBoardView extends android.support.v7.widget.AppCompatImageVi
                     ((TextPainter) mCurrentPainter).moveTo(event.getX() - pX, event.getY() - pY);
                     pX = event.getX();
                     pY = event.getY();
-                } else if(mCurrentPainter instanceof RectPainter){
+                } else if (mCurrentPainter instanceof RectPainter) {
                     PointF current = new PointF(event.getX(), event.getY());
                     ((RectPainter) mCurrentPainter).setCurrent(current);
                 }
@@ -167,11 +186,11 @@ public class DrawingBoardView extends android.support.v7.widget.AppCompatImageVi
         mDrawingType = DrawingType.PATH;
     }
 
-    public void addRectPainter(){
+    public void addRectPainter() {
         mDrawingType = DrawingType.RECT;
     }
 
-    public void addOvalPainter(){
+    public void addOvalPainter() {
         mDrawingType = DrawingType.OVAL;
     }
 
@@ -199,9 +218,29 @@ public class DrawingBoardView extends android.support.v7.widget.AppCompatImageVi
      * @param file
      * @return
      */
-    public boolean save(File file) {
-        Bitmap bitmap = getBitmap();
+    public boolean save(final File file, SingleObserver<File> observable) {
+        Single.create(new SingleOnSubscribe<File>() {
+            @Override
+            public void subscribe(SingleEmitter<File> e) throws Exception {
+                try (FileOutputStream fos = new FileOutputStream(file)) {
+                    Bitmap bitmap = getBitmap();
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+                    fos.flush();
+                }
+                galleryAddPic(file);
+                e.onSuccess(file);
+            }
+        }).subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread()).subscribe(observable);
         return true;
+    }
+
+    public void galleryAddPic(File file) {
+        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+
+        Uri contentUri = Uri.fromFile(file);
+        mediaScanIntent.setData(contentUri);
+        getContext().sendBroadcast(mediaScanIntent);
     }
 
     public Bitmap getBitmap() {
@@ -210,7 +249,7 @@ public class DrawingBoardView extends android.support.v7.widget.AppCompatImageVi
         Canvas canvas = new Canvas(resultBitmap);
 
         canvas.drawBitmap(mBitmap, new Matrix(), null);
-        float ratio = mBitmap.getWidth() / (getWidth()* 1F);
+        float ratio = mBitmap.getWidth() / (getWidth() * 1F);
         Iterator<SubPainter> iterator = mPainters.iterator();
         while (iterator.hasNext()) {
             SubPainter painter = iterator.next();
