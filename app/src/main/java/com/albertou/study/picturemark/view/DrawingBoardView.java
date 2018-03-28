@@ -186,10 +186,16 @@ public class DrawingBoardView extends android.support.v7.widget.AppCompatImageVi
         mDrawingType = DrawingType.PATH;
     }
 
+    /**
+     * 添加矩形图形画工
+     */
     public void addRectPainter() {
         mDrawingType = DrawingType.RECT;
     }
 
+    /**
+     * 添加椭圆图形画工
+     */
     public void addOvalPainter() {
         mDrawingType = DrawingType.OVAL;
     }
@@ -222,10 +228,19 @@ public class DrawingBoardView extends android.support.v7.widget.AppCompatImageVi
         Single.create(new SingleOnSubscribe<File>() {
             @Override
             public void subscribe(SingleEmitter<File> e) throws Exception {
-                try (FileOutputStream fos = new FileOutputStream(file)) {
-                    Bitmap bitmap = getBitmap();
+                Bitmap bitmap = getBitmap();
+                FileOutputStream fos = null;
+                try{
+                    fos = new FileOutputStream(file);
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
                     fos.flush();
+                }finally {
+                    if(fos!=null){
+                        fos.close();
+                    }
+                    if(bitmap!=null){
+                        bitmap.recycle();
+                    }
                 }
                 galleryAddPic(file);
                 e.onSuccess(file);
