@@ -12,8 +12,10 @@ import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -229,18 +231,12 @@ public class DrawingBoardView extends android.support.v7.widget.AppCompatImageVi
             @Override
             public void subscribe(SingleEmitter<File> e) throws Exception {
                 Bitmap bitmap = getBitmap();
-                FileOutputStream fos = null;
-                try{
-                    fos = new FileOutputStream(file);
+                try(FileOutputStream fos = new FileOutputStream(file)){
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
                     fos.flush();
-                }finally {
-                    if(fos!=null){
-                        fos.close();
-                    }
-                    if(bitmap!=null){
-                        bitmap.recycle();
-                    }
+                }
+                if(bitmap!=null){
+                    bitmap.recycle();
                 }
                 galleryAddPic(file);
                 e.onSuccess(file);
@@ -271,5 +267,21 @@ public class DrawingBoardView extends android.support.v7.widget.AppCompatImageVi
             painter.draw(canvas, ratio);
         }
         return resultBitmap;
+    }
+
+    private void closeIO(Closeable c){
+        if(c!=null){
+            try {
+                c.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void bitmapRecycle(Bitmap bitmap){
+        if(bitmap!=null&&!bitmap.isRecycled()){
+            bitmap.recycle();
+        }
     }
 }
